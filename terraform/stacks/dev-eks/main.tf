@@ -94,3 +94,18 @@ module "dev-cluster" {
     }
   }
 }
+
+resource "aws_iam_policy" "ingress" {
+  name_prefix = "eks-ingress-${module.dev-cluster.cluster_id}"
+  description = "ingress for cluster ${module.dev-cluster.cluster_id}"
+  policy      = file("./aws_iam_policy/ingress.json")
+}
+
+module "ingress" {
+  source                        = "../../terraform-modules/iam-assumable-role-with-oidc"
+  create_role                   = true
+  role_name                     = "ingress-${module.dev-cluster.cluster_id}"
+  provider_url                  = replace(module.dev-cluster.cluster_oidc_issuer_url, "https://", "")
+  role_policy_arns              = [aws_iam_policy.ingress.arn]
+  oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+}    
